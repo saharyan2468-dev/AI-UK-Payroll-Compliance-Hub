@@ -19,7 +19,8 @@
   function calculate(input) {
     const values = input || {};
     const taxYear = values.taxYear || '2026/27';
-    const rules = global.PayrollRules?.taxYears[taxYear]?.statutoryPayments?.smp;
+    const taxRules = global.PayrollRules?.taxYears[taxYear];
+    const rules = taxRules?.statutoryPayments?.smp;
     if (!rules) throw new Error(`SMP rules are unavailable for tax year: ${taxYear}.`);
     const averageWeeklyEarnings = nonNegative(values.averageWeeklyEarnings, 'Average weekly earnings');
     const qualifyingDays = normalizeDays(values.qualifyingDays);
@@ -35,11 +36,13 @@
     return {
       taxYear, paymentType: 'smp', averageWeeklyEarnings, qualifyingDays, weeks, highRateWeeklyAmount, standardWeeklyAmount,
       highRateDays, standardRateDays, estimate, total: estimate,
-      assumptions: ['This is an SMP amount estimate, not an eligibility determination.', 'The supplied qualifying-day pattern repeats each week.', 'SMP eligibility, continuous employment, notice, baby-related evidence and maternity leave dates are not determined.', 'The 2026/27 two-stage SMP rates are applied for the selected number of weeks.'],
+      assumptions: ['This is an SMP amount estimate, not an eligibility determination.', 'The supplied qualifying-day pattern repeats each week.', 'SMP eligibility, continuous employment, notice, baby-related evidence and maternity leave dates are not determined.', `The ${taxYear} two-stage SMP rates are applied for the selected number of weeks.`],
+      source: taxRules.source,
+      effectivePeriod: `${taxRules.effectiveFrom} to ${taxRules.effectiveTo}`,
       calculationExplanation: `The first ${rules.higherRateWeeks} weeks use ${rules.higherRate * 100}% of average weekly earnings. The remaining weeks use the lower of ${rules.higherRate * 100}% of average weekly earnings or ${money(rules.standardWeeklyRate)}. Amounts are distributed across ${rules.qualifyingDaysPerWeek} SMP qualifying days per week; your ${qualifyingDays.length}-day pattern determines the estimated payable days.`
     };
   }
 
   function money(value) { return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value || 0); }
-  global.SmpCalculator = Object.freeze({ calculate, supportedTaxYears: Object.freeze(['2026/27']) });
+  global.SmpCalculator = Object.freeze({ calculate, supportedTaxYears: global.PayrollRules.supportedTaxYears });
 }(typeof globalThis !== 'undefined' ? globalThis : this));

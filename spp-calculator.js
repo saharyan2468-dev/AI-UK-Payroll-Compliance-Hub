@@ -19,7 +19,8 @@
   function calculate(input) {
     const values = input || {};
     const taxYear = values.taxYear || '2026/27';
-    const rules = global.PayrollRules?.taxYears[taxYear]?.statutoryPayments?.spp;
+    const taxRules = global.PayrollRules?.taxYears[taxYear];
+    const rules = taxRules?.statutoryPayments?.spp;
     if (!rules) throw new Error(`SPP rules are unavailable for tax year: ${taxYear}.`);
     const averageWeeklyEarnings = nonNegative(values.averageWeeklyEarnings, 'Average weekly earnings');
     const qualifyingDays = normalizeDays(values.qualifyingDays);
@@ -31,11 +32,13 @@
     const estimate = dailyAmount * payableDays;
     return {
       taxYear, paymentType: 'spp', averageWeeklyEarnings, qualifyingDays, weeks, payableDays, weeklyAmount, dailyAmount, estimate, total: estimate,
-      assumptions: ['This is an SPP amount estimate, not an eligibility determination.', 'The supplied qualifying-day pattern repeats each week.', 'SPP eligibility, notice, qualifying relationship, employment and leave-date rules are not determined.', 'The 2026/27 rate is capped at the statutory weekly rate and limited to two weeks.'],
+      assumptions: ['This is an SPP amount estimate, not an eligibility determination.', 'The supplied qualifying-day pattern repeats each week.', 'SPP eligibility, notice, qualifying relationship, employment and leave-date rules are not determined.', `The ${taxYear} rate is capped at the statutory weekly rate and limited to two weeks.`],
+      source: taxRules.source,
+      effectivePeriod: `${taxRules.effectiveFrom} to ${taxRules.effectiveTo}`,
       calculationExplanation: `SPP uses the lower of ${(rules.earningsRate * 100).toFixed(0)}% of average weekly earnings or ${money(rules.standardWeeklyRate)} per week. The weekly amount is distributed across ${rules.qualifyingDaysPerWeek} qualifying days, then applied to ${payableDays} payable qualifying day(s) across ${weeks} week(s).`
     };
   }
 
   function money(value) { return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value || 0); }
-  global.SppCalculator = Object.freeze({ calculate, supportedTaxYears: Object.freeze(['2026/27']) });
+  global.SppCalculator = Object.freeze({ calculate, supportedTaxYears: global.PayrollRules.supportedTaxYears });
 }(typeof globalThis !== 'undefined' ? globalThis : this));

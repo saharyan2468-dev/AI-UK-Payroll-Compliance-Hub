@@ -19,7 +19,8 @@
   function calculate(input) {
     const values = input || {};
     const taxYear = values.taxYear || '2026/27';
-    const rules = global.PayrollRules?.taxYears[taxYear]?.statutoryPayments?.neonatal;
+    const taxRules = global.PayrollRules?.taxYears[taxYear];
+    const rules = taxRules?.statutoryPayments?.neonatal;
     if (!rules) throw new Error(`Neonatal Care Pay rules are unavailable for tax year: ${taxYear}.`);
     const averageWeeklyEarnings = nonNegative(values.averageWeeklyEarnings, 'Average weekly earnings');
     const qualifyingDays = normalizeDays(values.qualifyingDays, 'Qualifying days');
@@ -34,11 +35,13 @@
     return {
       taxYear, paymentType: 'neonatal', averageWeeklyEarnings, qualifyingDays, neonatalCareDays,
       weeks, payableDaysPerWeek, payableDays, weeklyAmount, dailyAmount, estimate, total: estimate,
-      assumptions: ['This is a Statutory Neonatal Care Pay amount estimate, not an eligibility determination.', 'The supplied qualifying-day and neonatal-care-day patterns repeat each week.', 'Neonatal care, employment, notice, leave-date and parental eligibility evidence are not determined.', 'The 2026/27 rate is capped at the statutory weekly rate and limited to 12 weeks.'],
+      assumptions: ['This is a Statutory Neonatal Care Pay amount estimate, not an eligibility determination.', 'The supplied qualifying-day and neonatal-care-day patterns repeat each week.', 'Neonatal care, employment, notice, leave-date and parental eligibility evidence are not determined.', `The ${taxYear} rate is capped at the statutory weekly rate and limited to 12 weeks.`],
+      source: taxRules.source,
+      effectivePeriod: `${taxRules.effectiveFrom} to ${taxRules.effectiveTo}`,
       calculationExplanation: `Neonatal Care Pay uses the lower of ${(rules.earningsRate * 100).toFixed(0)}% of average weekly earnings or ${money(rules.standardWeeklyRate)} per week. The weekly amount is divided across ${rules.qualifyingDaysPerWeek} days, then applied to ${payableDays} matching neonatal-care qualifying day(s) across ${weeks} week(s).`
     };
   }
 
   function money(value) { return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value || 0); }
-  global.NeonatalCalculator = Object.freeze({ calculate, supportedTaxYears: Object.freeze(['2026/27']) });
+  global.NeonatalCalculator = Object.freeze({ calculate, supportedTaxYears: global.PayrollRules.supportedTaxYears });
 }(typeof globalThis !== 'undefined' ? globalThis : this));
